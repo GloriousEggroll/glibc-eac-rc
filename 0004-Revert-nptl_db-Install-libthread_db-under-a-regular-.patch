@@ -1,0 +1,27 @@
+From 0a5e5014b621fed7fe077fdcbdd7727dd12c8d9f Mon Sep 17 00:00:00 2001
+From: Thomas Crider <gloriouseggroll@gmail.com>
+Date: Thu, 2 Jun 2022 15:54:58 -0600
+Subject: [PATCH 4/4] Revert "nptl_db: Install libthread_db under a regular
+ implementation name"
+
+This reverts commit 86f0179bc003ffc34ffaa8d528a7a90153ac06c6.
+---
+ nptl_db/Makefile | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/nptl_db/Makefile b/nptl_db/Makefile
+index ed923a41e5..3422959884 100644
+--- a/nptl_db/Makefile
++++ b/nptl_db/Makefile
+@@ -21,6 +21,8 @@ subdir          := nptl_db
+ 
+ include ../Makeconfig
+ 
++nptl_db-version = 1.0
++
+ extra-libs = libthread_db
+ extra-libs-others := $(extra-libs)
+ 
+-- 
+2.36.1
+

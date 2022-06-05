@@ -1,0 +1,54 @@
+From 270af4eb5410092fbcbe7acd369c7e5a9d27f844 Mon Sep 17 00:00:00 2001
+From: Thomas Crider <gloriouseggroll@gmail.com>
+Date: Thu, 2 Jun 2022 15:49:48 -0600
+Subject: [PATCH 2/4] Revert "elf: Generalize name-based DSO recognition in
+ ldconfig"
+
+This reverts commit 6bf789d69e6be48419094ca98f064e00297a27d5.
+---
+ elf/Makefile        |  1 -
+ elf/dl-is_dso.h     | 33 ---------------------------------
+ elf/ldconfig.c      |  5 +++--
+ elf/tst-dl-is_dso.c | 35 -----------------------------------
+ 4 files changed, 3 insertions(+), 71 deletions(-)
+ delete mode 100644 elf/dl-is_dso.h
+ delete mode 100644 elf/tst-dl-is_dso.c
+
+diff --git a/elf/Makefile b/elf/Makefile
+index 67428f2de2..5bcf73869b 100644
+--- a/elf/Makefile
++++ b/elf/Makefile
+@@ -401,7 +401,6 @@ tests += \
+   tst-big-note \
+   tst-debug1 \
+   tst-deep1 \
+-  tst-dl-is_dso \
+   tst-dlmodcount \
+   tst-dlmopen1 \
+   tst-dlmopen3 \
+diff --git a/elf/ldconfig.c b/elf/ldconfig.c
+index 57bb95ebc3..3924362ce9 100644
+--- a/elf/ldconfig.c
++++ b/elf/ldconfig.c
+@@ -42,7 +42,6 @@
+ #include <ldconfig.h>
+ #include <dl-cache.h>
+ #include <dl-hwcaps.h>
+-#include <dl-is_dso.h>
+ 
+ #include <dl-procinfo.h>
+ 
+@@ -846,7 +845,9 @@ search_dir (const struct dir_entry *entry)
+ 	 subdirectory (if not already processing a glibc-hwcaps
+ 	 subdirectory)?  The dynamic linker is also considered as
+ 	 shared library.  */
+-      if (!_dl_is_dso (direntry->d_name)
++      if (((strncmp (direntry->d_name, "lib", 3) != 0
++	    && strncmp (direntry->d_name, "ld-", 3) != 0)
++	   || strstr (direntry->d_name, ".so") == NULL)
+ 	  && (direntry->d_type == DT_REG
+ 	      || (entry->hwcaps == NULL
+ 		  && !is_hwcap_platform (direntry->d_name))))
+-- 
+2.36.1
+
