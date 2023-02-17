@@ -8,29 +8,31 @@
 
 pkgbase=glibc
 pkgname=(glibc lib32-glibc)
-pkgver=2.36
-_commit=2bd815d8347851212b9a91dbdca8053f4dbdac87
-pkgrel=6
+pkgver=2.37
+_commit=a704fd9a133bfb10510e18702f48a6a9c88dbbd5
+pkgrel=2
 arch=(x86_64)
 url='https://www.gnu.org/software/libc'
 license=(GPL LGPL)
 makedepends=(git gd lib32-gcc-libs python)
-options=(debug staticlibs !lto)
+options=(staticlibs !lto)
 source=(git+https://sourceware.org/git/glibc.git#commit=${_commit}
         locale.gen.txt
         locale-gen
         lib32-glibc.conf
         sdt.h sdt-config.h
         reenable_DT_HASH.patch
+		cve-2023-25139.patch
 		0001-Revert-elf-Clean-up-GLIBC_PRIVATE-exports-of-interna.patch
-        0001-Revert-Install-shared-objects-under-their-ABI-names.patch
-        0002-Revert-elf-Generalize-name-based-DSO-recognition-in-.patch
+		0001-Revert-Install-shared-objects-under-their-ABI-names.patch
+		0002-Revert-elf-Generalize-name-based-DSO-recognition-in-.patch
         0003-Revert-Makerules-Remove-lib-version-subdir-version.patch
         0004-Revert-nptl_db-Install-libthread_db-under-a-regular-.patch
 )
 validpgpkeys=(7273542B39962DF7B299931416792B4EA25340F8 # Carlos O'Donell
               BC7C7372637EC10C57D7AA6579C43DFBF1CF2187) # Siddhesh Poyarekar
 b2sums=('SKIP'
+        'SKIP'
         'SKIP'
         'SKIP'
         'SKIP'
@@ -52,14 +54,16 @@ prepare() {
   # Fix Rogue Company EAC
   patch -Np1 -i "${srcdir}"/0001-Revert-elf-Clean-up-GLIBC_PRIVATE-exports-of-interna.patch
   patch -Np1 -i "${srcdir}"/0001-Revert-Install-shared-objects-under-their-ABI-names.patch
-  patch -Np1 -i "${srcdir}"/0002-Revert-elf-Generalize-name-based-DSO-recognition-in-.patch
+  patch --verbose -Np1 -i "${srcdir}"/0002-Revert-elf-Generalize-name-based-DSO-recognition-in-.patch
   patch -Np1 -i "${srcdir}"/0003-Revert-Makerules-Remove-lib-version-subdir-version.patch
   patch -Np1 -i "${srcdir}"/0004-Revert-nptl_db-Install-libthread_db-under-a-regular-.patch
 
-  # re-enable `--hash-style=both` for building shared objects due to issues with EPIC's EAC
+  # Re-enable `--hash-style=both` for building shared objects due to issues with EPIC's EAC
   # which relies on DT_HASH to be present in these libs.
   # reconsider 2023-01
   patch -Np1 -i "${srcdir}"/reenable_DT_HASH.patch
+
+  patch -Np1 -i "${srcdir}"/cve-2023-25139.patch
 }
 
 build() {
@@ -73,12 +77,12 @@ build() {
       --enable-multi-arch
       --enable-stack-protector=strong
       --enable-systemtap
-      --disable-profile
       --disable-crypt
+      --disable-profile
       --disable-werror
   )
 
-  cd "$srcdir/glibc-build"
+  cd "${srcdir}"/glibc-build
 
   echo "slibdir=/usr/lib" >> configparms
   echo "rtlddir=/usr/lib" >> configparms
@@ -90,7 +94,7 @@ build() {
   # remove fortify for building libraries
   CFLAGS=${CFLAGS/-Wp,-D_FORTIFY_SOURCE=2/}
 
-  "$srcdir/glibc/configure" \
+  "${srcdir}"/glibc/configure \
       --libdir=/usr/lib \
       --libexecdir=/usr/lib \
       "${_configure_flags[@]}"
@@ -107,7 +111,7 @@ build() {
   # build info pages manually for reproducibility
   make info
 
-  cd "$srcdir/lib32-glibc-build"
+  cd "${srcdir}"/lib32-glibc-build
   export CC="gcc -m32 -mstackrealign"
   export CXX="g++ -m32 -mstackrealign"
 
@@ -116,7 +120,7 @@ build() {
   echo "sbindir=/usr/bin" >> configparms
   echo "rootsbindir=/usr/bin" >> configparms
 
-  "$srcdir/glibc/configure" \
+  "${srcdir}"/glibc/configure \
       --host=i686-pc-linux-gnu \
       --libdir=/usr/lib32 \
       --libexecdir=/usr/lib32 \
@@ -179,38 +183,42 @@ package_glibc() {
           etc/locale.gen
           etc/nscd.conf)
 
-  make -C glibc-build install_root="$pkgdir" install
-  rm -f "$pkgdir"/etc/ld.so.cache
+  make -C glibc-build install_root="${pkgdir}" install
+  rm -f "${pkgdir}"/etc/ld.so.cache
 
   # Shipped in tzdata
-  rm -f "$pkgdir"/usr/bin/{tzselect,zdump,zic}
+  rm -f "${pkgdir}"/usr/bin/{tzselect,zdump,zic}
 
   cd glibc
 
-  install -dm755 "$pkgdir"/usr/lib/{locale,systemd/system,tmpfiles.d}
-  install -m644 nscd/nscd.conf "$pkgdir/etc/nscd.conf"
-  install -m644 nscd/nscd.service "$pkgdir/usr/lib/systemd/system"
-  install -m644 nscd/nscd.tmpfiles "$pkgdir/usr/lib/tmpfiles.d/nscd.conf"
-  install -dm755 "$pkgdir/var/db/nscd"
+  install -dm755 "${pkgdir}"/usr/lib/{locale,systemd/system,tmpfiles.d}
+  install -m644 nscd/nscd.conf "${pkgdir}"/etc/nscd.conf
+  install -m644 nscd/nscd.service "${pkgdir}"/usr/lib/systemd/system
+  install -m644 nscd/nscd.tmpfiles "${pkgdir}"/usr/lib/tmpfiles.d/nscd.conf
+  install -dm755 "${pkgdir}"/var/db/nscd
 
-  install -m644 posix/gai.conf "$pkgdir"/etc/gai.conf
+  install -m644 posix/gai.conf "${pkgdir}"/etc/gai.conf
 
-  install -m755 "$srcdir/locale-gen" "$pkgdir/usr/bin"
+  install -m755 "${srcdir}"/locale-gen "${pkgdir}"/usr/bin
 
   # Create /etc/locale.gen
-  install -m644 "$srcdir/locale.gen.txt" "$pkgdir/etc/locale.gen"
+  install -m644 "${srcdir}"/locale.gen.txt "${pkgdir}"/etc/locale.gen
   sed -e '1,3d' -e 's|/| |g' -e 's|\\| |g' -e 's|^|#|g' \
-    "$srcdir/glibc/localedata/SUPPORTED" >> "$pkgdir/etc/locale.gen"
+    "${srcdir}"/glibc/localedata/SUPPORTED >> "${pkgdir}"/etc/locale.gen
+
+  # Add SUPPORTED file to pkg
+  sed -e '1,3d' -e 's|/| |g' -e 's| \\||g' \
+    "${srcdir}"/glibc/localedata/SUPPORTED > "${pkgdir}"/usr/share/i18n/SUPPORTED
 
   # install C.UTF-8 so that it is always available
-  install -dm755 "$pkgdir/usr/lib/locale"
-  cp -r "$srcdir/C.UTF-8" -t "$pkgdir/usr/lib/locale"
-  sed -i '/#C\.UTF-8 /d' "$pkgdir/etc/locale.gen"
+  install -dm755 "${pkgdir}"/usr/lib/locale
+  cp -r "${srcdir}"/C.UTF-8 -t "${pkgdir}"/usr/lib/locale
+  sed -i '/#C\.UTF-8 /d' "${pkgdir}"/etc/locale.gen
 
   # Provide tracing probes to libstdc++ for exceptions, possibly for other
   # libraries too. Useful for gdb's catch command.
-  install -Dm644 "$srcdir/sdt.h" "$pkgdir/usr/include/sys/sdt.h"
-  install -Dm644 "$srcdir/sdt-config.h" "$pkgdir/usr/include/sys/sdt-config.h"
+  install -Dm644 "${srcdir}"/sdt.h "${pkgdir}"/usr/include/sys/sdt.h
+  install -Dm644 "${srcdir}"/sdt-config.h "${pkgdir}"/usr/include/sys/sdt-config.h
 }
 
 package_lib32-glibc() {
@@ -220,19 +228,19 @@ package_lib32-glibc() {
 
   cd lib32-glibc-build
 
-  make install_root="$pkgdir" install
-  rm -rf "$pkgdir"/{etc,sbin,usr/{bin,sbin,share},var}
+  make install_root="${pkgdir}" install
+  rm -rf "${pkgdir}"/{etc,sbin,usr/{bin,sbin,share},var}
 
   # We need to keep 32 bit specific header files
-  find "$pkgdir/usr/include" -type f -not -name '*-32.h' -delete
+  find "${pkgdir}"/usr/include -type f -not -name '*-32.h' -delete
 
   # Dynamic linker
-  install -d "$pkgdir/usr/lib"
-  ln -s ../lib32/ld-linux.so.2 "$pkgdir/usr/lib/"
+  install -d "${pkgdir}"/usr/lib
+  ln -s ../lib32/ld-linux.so.2 "${pkgdir}"/usr/lib/
 
   # Add lib32 paths to the default library search path
-  install -Dm644 "$srcdir/lib32-glibc.conf" "$pkgdir/etc/ld.so.conf.d/lib32-glibc.conf"
+  install -Dm644 "${srcdir}"/lib32-glibc.conf "${pkgdir}"/etc/ld.so.conf.d/lib32-glibc.conf
 
   # Symlink /usr/lib32/locale to /usr/lib/locale
-  ln -s ../lib/locale "$pkgdir/usr/lib32/locale"
+  ln -s ../lib/locale "${pkgdir}"/usr/lib32/locale
 }
