@@ -9,8 +9,8 @@
 pkgbase=glibc
 pkgname=(glibc lib32-glibc)
 pkgver=2.37
-_commit=a704fd9a133bfb10510e18702f48a6a9c88dbbd5
-pkgrel=2
+_commit=7c32cb7dd88cf100b0b412163896e30aa2ee671a
+pkgrel=3
 arch=(x86_64)
 url='https://www.gnu.org/software/libc'
 license=(GPL LGPL)
@@ -22,7 +22,6 @@ source=(git+https://sourceware.org/git/glibc.git#commit=${_commit}
         lib32-glibc.conf
         sdt.h sdt-config.h
         reenable_DT_HASH.patch
-		cve-2023-25139.patch
 		0001-Revert-elf-Clean-up-GLIBC_PRIVATE-exports-of-interna.patch
 		0001-Revert-Install-shared-objects-under-their-ABI-names.patch
 		0002-Revert-elf-Generalize-name-based-DSO-recognition-in-.patch
@@ -32,7 +31,6 @@ source=(git+https://sourceware.org/git/glibc.git#commit=${_commit}
 validpgpkeys=(7273542B39962DF7B299931416792B4EA25340F8 # Carlos O'Donell
               BC7C7372637EC10C57D7AA6579C43DFBF1CF2187) # Siddhesh Poyarekar
 b2sums=('SKIP'
-        'SKIP'
         'SKIP'
         'SKIP'
         'SKIP'
@@ -62,8 +60,6 @@ prepare() {
   # which relies on DT_HASH to be present in these libs.
   # reconsider 2023-01
   patch -Np1 -i "${srcdir}"/reenable_DT_HASH.patch
-
-  patch -Np1 -i "${srcdir}"/cve-2023-25139.patch
 }
 
 build() {
@@ -167,6 +163,7 @@ check() {
   skip_test tst-ntp_gettimex        sysdeps/unix/sysv/linux/Makefile
   skip_test tst-pkey                sysdeps/unix/sysv/linux/Makefile
   skip_test tst-process_mrelease    sysdeps/unix/sysv/linux/Makefile
+  skip_test tst-ttyname             sysdeps/unix/sysv/linux/Makefile
   skip_test tst-adjtime             time/Makefile
   skip_test tst-clock2              time/Makefile
 
